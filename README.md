@@ -8,12 +8,27 @@ The best scenario would perhaps be some sort of ACME... but if you
 don't have that then you might need this which allows you to create a
 purely fake CA and issues certs from it easily.
 
+
+## How to install?
+
+Like this:
+
+```
+npm i @nicferrier/forge-test-ca
+```
+
+You'll need at least node v10 I think.
+
+There is no binary or anything here, it's only useful as a development
+(in fact, just a testing) library.
+
+
 ## Make a CA
 
 That's easy
 
 ```javascript
-const caMaker = require("ca-maker");
+const caMaker = require("@nicferrier/forge-test-ca");
 const {
     caCert,
     caAttrs,
@@ -39,7 +54,7 @@ being requested.
 We don't need the proof because this is just for testing:
 
 ```javascript
-const caMaker = require("ca-maker");
+const caMaker = require("@nicferrier/forge-test-ca");
 const [privateKeyInPem, publicKeyInPem, csrInPem] = caMaker.makeCsr();
 ```
 
@@ -54,7 +69,7 @@ Note how it makes all the stuff you would normally need:
 That's just the two above combined:
 
 ```javascript
-const caMaker = require("ca-maker");
+const caMaker = require("@nicferrier/forge-test-ca");
 
 // First make the ca ...
 const {
@@ -85,7 +100,7 @@ Here's a full example:
 ```javascript
 const https = require("https");
 const express = require("express");
-const caMaker = require("ca-maker");
+const caMaker = require("@nicferrier/forge-test-ca");
 
 const { caCert, caAttrs, caKeyPair, issue } = caMaker.makeCa();
 const [privateKeyInPem, myPublicKeyInPem, csrInPem] = caMaker.makeCsr();
