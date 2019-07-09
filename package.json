@@ -8,7 +8,7 @@
   },
   "keywords": ["ca", "tls"],
   "author": "Nic Ferrier, <ferriernic@gmail.com>",
-  "repository": "nicferrier/npm-forge-ca-4-tests";
+  "repository": "nicferrier/npm-forge-ca-4-tests",
   "license": "ISC",
   "dependencies": {
     "node-forge": "^0.8.3"
