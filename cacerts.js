@@ -94,27 +94,40 @@ const makeCa = function () {
     };
 };
 
-const makeCsr = function () {
+
+const csrDefaultOptions = {
+    commonName: "localhost",
+    countryName: "GB",
+    localityName: "GB",
+    organizationName: "Example",
+    OU: "Example"
+};
+// altNames should just be a list of names
+const makeCsr = function (csrOptions = {}, altNames = []) {
+    const csrOpts = Object.assign(csrDefaultOptions, csrOptions);
+    const subjectDetails = Object.keys(csrOpts).map(key => {
+        if (key == "OU") {
+            return { shortName: key, value: csrOpts[key] };
+        }
+        return { name: key, value: csrOpts[key] };
+    });
+
     const keys = pki.rsa.generateKeyPair(2048);
     const csr = pki.createCertificationRequest();
     csr.publicKey = keys.publicKey;
-    csr.setSubject([
-        {name: "commonName", value: "localhost"},
-        {name: "countryName", value: "GB"},
-        {name: "localityName", value: "GB"},
-        {name: "organizationName", value: "Example"},
-        {shortName: "OU", value: "Example" },
-    ]);
+
+    // console.log("csr subject details", subjectDetails);
+    csr.setSubject(subjectDetails);
+
+    const altNameList = altNames.concat([csrOpts.commonName]).map(name => [{
+        type: 2, value: name
+    }][0]);
     csr.setAttributes([
         { name: "unstructuredName", value: "My Example Cert" },
         { name: "extensionRequest",
           extensions: [{
               name: "subjectAltName",
-              altNames: [
-                  { type: 2, value: "localhost" },
-                  { type: 2, value: "other.domain.com" },
-              { type: 2, value: "www.example.org" }
-              ]
+              altNames: altNameList
           }]
         }
     ]);
