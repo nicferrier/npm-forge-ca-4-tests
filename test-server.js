@@ -3,6 +3,7 @@ const express = require("express");
 const caMaker = require("./cacerts.js");
 const url = require("url");
 const assert = require("assert");
+const fetch = require("node-fetch");
 
 // These two for the server to do resolution test
 const dns = require('dns');
@@ -67,8 +68,6 @@ const test = async function () {
             });
         }).then(a => {return [undefined, a]}).catch(e => { return [e]});
 
-        console.log("resolved", resolved, ip, req.connection.remoteFamily);
-        
         if (err !== undefined) {
             return res.sendStatus(403);
         }
@@ -78,50 +77,29 @@ const test = async function () {
             const [privateKeyInPem, myPublicKeyInPem, csrInPem] = caMaker.makeCsr();
             // ... and issue the cert for the cert server.
             const {cert, ca} = issue(myPublicKeyInPem, csrInPem);
+            return res.send(cert);
         }
-        res.send(cert);
+        else {
+            res.sendStatus(402);
+        }
     });
 
     const tlsOpts = { key: privateKeyInPem, cert, ca };
-    const listener = https.createServer(tlsOpts, app).listen(8443);
+    const testCertServerPort = 8443;
+    const listener = https.createServer(tlsOpts, app).listen(testCertServerPort);
     https.globalAgent = new https.Agent({ ca: ca });
 
     try {
-        const [err, [response, body]] = await new Promise((resolve, reject) => {
-            const postData = new url.URLSearchParams({
-                dnsname: "my-test-server.com"
-            }).toString();
+        const response = await fetch(`https://localhost:${testCertServerPort}/cert`, {
+            method: "POST",
+            agent: https.globalAgent,
+            body: new url.URLSearchParams({dnsname: "my-test-server.com"})
+        });
 
-            const req = https.request({
-                agent: https.globalAgent,
-                hostname: 'localhost',
-                port: 8443,
-                method: 'POST',
-                path: '/cert',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Content-Length': Buffer.byteLength(postData)
-                }
-            }, response => {
-                let rawData = '';
-                response.on('data', (chunk) => { rawData += chunk; });
-                response.on('end', () => {
-                    try {
-                        resolve([response, rawData]);
-                    }
-                    catch (e) {
-                        reject(e);
-                    }
-                });
-            });
-            req.write(postData);
-            req.end();
-        }).then(r => [undefined, r]).catch(e => [e]);
+        console.log("status", response.status);
 
-        // have we got the data from the request to the SSL'd server
-        console.log(response.statusCode);
-        //assert.ok(body === "hello world");
-        console.log(body);
+        const cert = await response.text()
+        console.log(cert);
     }
     finally {
         listener.close();
