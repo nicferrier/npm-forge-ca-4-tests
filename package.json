@@ -2,7 +2,7 @@
   "name": "@nicferrier/forge-test-ca",
   "version": "1.0.2",
   "description": "A ca maker, particlarly for testing.",
-  "main": "cacerts.js",
+  "main": "main.js",
   "scripts": {
     "test": "node test-ca.js"
   },

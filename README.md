@@ -135,9 +135,99 @@ https.get("https://localhost:8443", { agent: https.globalAgent }, response => {
 this is basically replicated in the [test-ca.js](test-ca.js) file in
 this repository.
 
+## Using a server that makes a certificate for you
+
+ACME is great. But in some environments (internal certificates
+perhaps?) ACME is overkill for getting certs.
+
+One alternative is to have an internal CA that verifies ownership via
+DNS:
+
+```
+  Client                               Cert Server
+  
+  GET ?dnsname=internal.example.com
+                                       Check DNS internal.example.com
+                                       resolves to same address as request 
+                                       address,
+                                       
+                                       no? send error
+                                       
+                                       yes? make cert and send back
+  Use cert to start safe server
+```
+
+If you have such a service internally you can code to it. But how to test?
+
+This project includes a service that does this Cert Server function,
+but for a generated certificate.
+
+Here's how to use it:
+
+```javascript
+const url = require("url");
+const express = require("express");   // for the server we will start when we have a cert
+const fetch = require("node-fetch");  // to call the cert server
+
+const simpleCertService = require("@nicferrier/forge-test-ca").simpleCertService;
+
+const {
+    listener: certServiceListener,
+    dnsServer,
+    port: certServicePort,
+    ca
+} = await simpleCertService();
+
+try {
+   https.globalAgent = new https.Agent({ ca: ca });
+   const certServerUrl = `https://localhost:${certServicePort}/cert`; // This will change for non-development environment
+   const certResponse = await fetch(, {
+      method: "POST",
+      agent: https.globalAgent,
+      body: new url.URLSearchParams({dnsname: "my-test-server.com"})
+   });
+   const {cert:myCert,ca:myCa,privateKey:myPrivateKey} = await certResponse.json();
+   // Now start a server with this
+   
+   const app = express();
+   app.get("/test", function (req, res) {
+      res.send("<h1>Hello World!</h1>");
+   });
+
+   const opts = { key: myPrivateKey, cert: myCert, ca: myCa };
+   const port = 8444;
+   const listener = https.createServer(opts, app).listen(port);
+
+   console.log("listening on", listener.address().port);
+}
+finally {
+   certServiceListener.close();
+   dnsServer.socket.close();
+}
+```
+
+There is a [test for the cert server](test-server.js) in this
+repository which does basically this.
+
+### Notes and Issues with the Cert Server
+
+It actually uses a fake DNS server to do the resolution of the cert,
+just like a real implementation would use DNS.
+
+But the DNS server is both slow to start and to resolve. So any test
+of this will always suffer seconds of delay.
+
+The DNS server simply always returns `127.0.0.1` for whatever it is
+queryed.
+
+Could it be a real cert server? Probably, without too much work it
+could. But the management of certs is very dependent on how an
+organisation works. So this is left as an exercise for the reader.
+
 
 ## Thanks node-forge!
 
-This project wouldn't have been possible without node-forge, which is
-a totally awesome set of crypto and pki algorithms implementations.
+This project wouldn't have been possible without
+[node-forge](https://www.npmjs.com/package/node-forge), which is a
+totally awesome set of crypto and pki algorithms implementations.
 
