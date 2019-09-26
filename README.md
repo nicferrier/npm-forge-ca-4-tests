@@ -135,6 +135,38 @@ https.get("https://localhost:8443", { agent: https.globalAgent }, response => {
 this is basically replicated in the [test-ca.js](test-ca.js) file in
 this repository.
 
+
+## PKCS12?
+
+An alternative to the cert and the private key is a PKCS12 package.
+
+These are also available, though there is an extra step. 
+
+Going from the CSR step, it's:
+
+```javascript
+const [privateKeyInPem, myPublicKeyInPem, csrInPem] = caMaker.makeCsr();
+const {cert, ca, getPkcs12} = issue(myPublicKeyInPem, csrInPem);
+const {pkcs12, pkcs12password} = getPkcs12(privateKeyInPem);
+```
+
+Note that the `issue` call actually returns a function called
+`getPkcs12` which then returns the cert and key packaged as the
+PKCS12 form.
+
+You can also specify the password to the PKCS12 generation, which is
+then used by you later to unpack the PKCS12:
+
+```javascript
+const [privateKeyInPem, myPublicKeyInPem, csrInPem] = caMaker.makeCsr();
+const {cert, ca, getPkcs12} = issue(myPublicKeyInPem, csrInPem);
+const {pkcs12, pkcs12password} = getPkcs12(privateKeyInPem, "very secret");
+```
+
+By default the password is allocated as a fixed string embedded in
+this code.
+
+
 ## Using a server that makes a certificate for you
 
 ACME is great. But in some environments (internal certificates
@@ -180,9 +212,12 @@ const {
 
 try {
    https.globalAgent = new https.Agent({ ca: ca });
-   const endpoint = `localhost:${certServicePort}/certificates`; This will change for non-development environment
-   const dnsName = "my-test-server,com";
-   const certServerUrl = `https://${endpoint}?dnsname=${dnaName}`;
+   // Make the endpoint configurable to for non-development environment
+   const endpoint = `localhost:${certServicePort}/certificates`; 
+
+   // The name that this server is bound to
+   const dnsName = "my-test-server.com";
+   const certServerUrl = `https://${endpoint}?dnsname=${dnsName}`;
    const certResponse = await fetch(certServerUrl, { agent: https.globalAgent });
    const { pkcs12, pkcs12password } = await certResponse.json();
 
@@ -221,6 +256,14 @@ of this will always suffer seconds of delay.
 
 The DNS server simply always returns `127.0.0.1` for whatever it is
 queryed.
+
+The embedded server has a GET on the `/certificates` path which
+returns a PKCS12 with a password. If your actual implementation has
+some other contract then this code isn't much use and it's tricky for
+me to make something generic.
+
+But you could just copy the code and make it the server contract you
+want.
 
 Could it be a real cert server? Probably, without too much work it
 could. But the management of certs is very dependent on how an
