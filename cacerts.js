@@ -1,4 +1,7 @@
 const pki = require("node-forge").pki;
+const pkcs12 = require("node-forge").pkcs12;
+const asn1 = require("node-forge").asn1;
+const util = require("node-forge").util;
 
 const makeCa = function () {
     const serialNumber = (function () {
@@ -86,9 +89,32 @@ const makeCa = function () {
             
             cert.setExtensions(extensions);
             cert.sign(caKeyPair.privateKey);
+
+            const certInPem = pki.certificateToPem(cert);
+            const certChain = pki.certificateToPem(caCert) + certInPem;
+
             return {
-                cert: pki.certificateToPem(cert),
-                ca: pki.certificateToPem(caCert)
+                cert: certInPem,
+                ca: pki.certificateToPem(caCert),
+                getPkcs12: function (privateKeyPem, pkcs12password="secret") {
+                    const certChain = certInPem + pki.certificateToPem(caCert);
+
+                    // Encode as PKCS12 with a password
+                    const certAsPkcs12 = pkcs12.toPkcs12Asn1(
+                        pki.privateKeyFromPem(privateKeyPem),
+                        certChain,
+                        pkcs12password,
+                        {algorithm: '3des'}
+                    );
+                    
+                    const certPkcs12Der = asn1.toDer(certAsPkcs12).getBytes();
+                    const certPkcs12DerBase64 = util.encode64(certPkcs12Der);
+
+                    return {
+                        pkcs12: certPkcs12DerBase64,
+                        pkcs12password
+                    }
+                }
             };
         }
     };

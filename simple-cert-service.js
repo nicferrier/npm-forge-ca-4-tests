@@ -43,17 +43,11 @@ const service = async function (options= {}) {
     const {cert, ca} = issue(myPublicKeyInPem, csrInPem);
 
     const app = express();
-    app.post("/cert", async function (req, res) {
+    app.get("/certificates", async function (req, res) {
         const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
-        let dataBuf="";
-        req.on("data", chunk => dataBuf = dataBuf + new String(chunk, "utf8"));
-        await new Promise((resolve, reject) => req.on("end", resolve));
-
-        const data = new url.URLSearchParams(dataBuf);
-
         // Get the dnsName for the cert from the request
-        const dnsName = data.get("dnsname");
+        const dnsName = req.query["dnsname"];
 
         const [err, resolved] = await new Promise((resolve, reject) => {
             console.log(`cert server dns check, resolving via> ${dnsServerPort}`);
@@ -74,9 +68,20 @@ const service = async function (options= {}) {
         // Handle any IPv6 nonsense
         const ipv4 = ip.split(":").reverse()[0];
         if (resolved.includes(ipv4)) {
-            const [privateKeyInPem, myPublicKeyInPem, csrInPem] = caMaker.makeCsr();
+            const [myPrivateKeyInPem, myPublicKeyInPem, csrInPem] = caMaker.makeCsr();
             // ... and issue the cert for the cert server.
-            const {cert, ca} = issue(myPublicKeyInPem, csrInPem);
+            const { cert, ca, getPkcs12 } = issue(myPublicKeyInPem, csrInPem);
+
+            if (req.query.version === "2") {
+                const {pkcs12, pkcs12password} = getPkcs12(myPrivateKeyInPem);
+                return res.json({
+                    pkcs12,
+                    pkcs12password,
+                    ca
+                });
+            }
+
+            // Else return version 1
             return res.json({
                 privateKey: privateKeyInPem,
                 cert,

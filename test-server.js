@@ -16,26 +16,37 @@ const test = async function () {
 
     try {
         https.globalAgent = new https.Agent({ ca: ca });
-        const certResponse = await fetch(`https://localhost:${certServicePort}/cert`, {
-            method: "POST",
-            agent: https.globalAgent,
-            body: new url.URLSearchParams({dnsname: "my-test-server.com"})
-        });
+
+        const certResponse = await fetch(
+            `https://localhost:${certServicePort}/certificates?dnsname=my-test-server.com&version=2`, {
+                agent: https.globalAgent
+            });
 
         console.log("response from cert server>", certResponse.status);
         assert.ok(certResponse.status === 200);
 
+        const certObject = await certResponse.json();
+        
         // Now get the parts and start a service with the new cert
-        const {cert:myCert,ca:myCa,privateKey:myPrivateKey} = await certResponse.json();
+        const {ca:myCa, pkcs12, pkcs12password} = certObject;
         
         const myTlsApp = express();
         myTlsApp.get("/test", function (req, res) {
             res.send("<h1>Hello World!</h1>");
         });
 
-        const myTlsOpts = { key: myPrivateKey, cert: myCert, ca: myCa };
+        // Apparently we can't use the base64 that forge generates, so do this:
+        const buf = Buffer.from(pkcs12, "base64");
+
+        // Now tls opts based on just the PKCS12 data and the passphrase
+        const myTlsOpts = {
+            pfx: buf,
+            passphrase: pkcs12password
+        };
+
         const testTlsServerPort = 8444;
-        const myTlsListener = https.createServer(myTlsOpts, myTlsApp).listen(testTlsServerPort);
+        const myTlsListener = https.createServer(myTlsOpts, myTlsApp)
+              .listen(testTlsServerPort);
 
         // Now connect to that service
         try {

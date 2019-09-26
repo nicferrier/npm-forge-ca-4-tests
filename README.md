@@ -180,27 +180,29 @@ const {
 
 try {
    https.globalAgent = new https.Agent({ ca: ca });
-   const certServerUrl = `https://localhost:${certServicePort}/cert`; // This will change for non-development environment
-   const certResponse = await fetch(, {
-      method: "POST",
-      agent: https.globalAgent,
-      body: new url.URLSearchParams({dnsname: "my-test-server.com"})
-   });
-   const {cert:myCert,ca:myCa,privateKey:myPrivateKey} = await certResponse.json();
+   const endpoint = `localhost:${certServicePort}/certificates`; This will change for non-development environment
+   const dnsName = my-test-server,com";
+   const certServerUrl = `https://${endpoint}?dnsname=${dnaName}`;
+   const certResponse = await fetch(certServerUrl, { agent: https.globalAgent });
+   const { pkcs12, pkcs12password } = await certResponse.json();
+
    // Now start a server with this
-   
    const app = express();
    app.get("/test", function (req, res) {
       res.send("<h1>Hello World!</h1>");
    });
 
-   const opts = { key: myPrivateKey, cert: myCert, ca: myCa };
+   const opts = { 
+      pfx: Buffer.from(pkcs12, "base64"), 
+      passphrase: pkcs12password
+   };
    const port = 8444;
    const listener = https.createServer(opts, app).listen(port);
 
    console.log("listening on", listener.address().port);
 }
 finally {
+   // In a test situation you might want to stop these things
    certServiceListener.close();
    dnsServer.socket.close();
 }
