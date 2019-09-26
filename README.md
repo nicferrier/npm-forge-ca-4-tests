@@ -181,7 +181,7 @@ const {
 try {
    https.globalAgent = new https.Agent({ ca: ca });
    const endpoint = `localhost:${certServicePort}/certificates`; This will change for non-development environment
-   const dnsName = my-test-server,com";
+   const dnsName = "my-test-server,com";
    const certServerUrl = `https://${endpoint}?dnsname=${dnaName}`;
    const certResponse = await fetch(certServerUrl, { agent: https.globalAgent });
    const { pkcs12, pkcs12password } = await certResponse.json();
