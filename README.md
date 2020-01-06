@@ -217,7 +217,9 @@ try {
 
    // The name that this server is bound to
    const dnsName = "my-test-server.com";
-   const certServerUrl = `https://${endpoint}?dnsname=${dnsName}`;
+   // The 'version=2' makes the request return a PKCS12 response 
+   const certServerUrl = `https://${endpoint}?dnsname=${dnsName}&version=2`;
+
    const certResponse = await fetch(certServerUrl, { agent: https.globalAgent });
    const { pkcs12, pkcs12password } = await certResponse.json();
 
