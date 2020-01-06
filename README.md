@@ -197,6 +197,7 @@ but for a generated certificate.
 Here's how to use it:
 
 ```javascript
+const https = require("https");
 const url = require("url");
 const express = require("express");   // for the server we will start when we have a cert
 const fetch = require("node-fetch");  // to call the cert server
