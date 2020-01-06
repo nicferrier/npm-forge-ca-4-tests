@@ -1,6 +1,6 @@
 {
   "name": "@nicferrier/forge-test-ca",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "A ca maker, particlarly for testing.",
   "main": "main.js",
   "scripts": {
