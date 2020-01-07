@@ -47,7 +47,7 @@ const service = async function (options= {}) {
         const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
         // Get the dnsName for the cert from the request
-        const dnsName = req.query["dnsname"];
+        const dnsName = req.query["domain"];
 
         const [err, resolved] = await new Promise((resolve, reject) => {
             console.log(`cert server dns check, resolving via> ${dnsServerPort}`);
