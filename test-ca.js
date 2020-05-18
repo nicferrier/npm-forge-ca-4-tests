@@ -4,7 +4,7 @@ const express = require("express");
 const caMaker = require("./cacerts.js");
 
 const test = async function () {
-    const { caCert, caAttrs, caKeyPair, issue } = caMaker.makeCa();
+    const { issue } = caMaker.makeCa();
     const [privateKeyInPem, myPublicKeyInPem, csrInPem] = caMaker.makeCsr();
     const {cert, ca} = issue(myPublicKeyInPem, csrInPem);
     

@@ -163,8 +163,7 @@ const test = async function () {
     }).then(r => [undefined, r]).catch(e => [e]);
 
     assert.ok(eerr !== undefined);
-    console.log("intentional error message was:", eerr.message);
-    
+    assert.ok(eerr.message.indexOf("does not match certificate's altnames") > 0);
     listener.close();
 };
 

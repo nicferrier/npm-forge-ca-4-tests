@@ -50,7 +50,7 @@ const service = async function (options= {}) {
         const dnsName = req.query["domain"];
 
         const [err, resolved] = await new Promise((resolve, reject) => {
-            console.log(`cert server dns check, resolving via> ${dnsServerPort}`);
+            console.log(`cert server dns check for ${dnsName} resolving via> ${dnsServerPort}`);
             resolver.resolve4(dnsName, (err, addresses) => {
                 if (err !== null) {
                     reject(err);
@@ -68,7 +68,12 @@ const service = async function (options= {}) {
         // Handle any IPv6 nonsense
         const ipv4 = ip.split(":").reverse()[0];
         if (resolved.includes(ipv4)) {
-            const [myPrivateKeyInPem, myPublicKeyInPem, csrInPem] = caMaker.makeCsr();
+            const altNames = [dnsName];
+            const [
+                myPrivateKeyInPem,
+                myPublicKeyInPem,
+                csrInPem
+            ] = caMaker.makeCsr({}, altNames);
             // ... and issue the cert for the cert server.
             const { cert, ca, getPkcs12 } = issue(myPublicKeyInPem, csrInPem);
 
@@ -89,6 +94,7 @@ const service = async function (options= {}) {
             });
         }
         else {
+            console.log("simple-cert-server - your server wasn't in the DNS");
             // Your server wasn't listed in the DNS
             res.sendStatus(402);
         }

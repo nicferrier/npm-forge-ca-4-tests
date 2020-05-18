@@ -128,6 +128,7 @@ const csrDefaultOptions = {
     organizationName: "Example",
     OU: "Example"
 };
+
 // altNames should just be a list of names
 const makeCsr = function (csrOptions = {}, altNames = []) {
     const csrOpts = Object.assign(csrDefaultOptions, csrOptions);

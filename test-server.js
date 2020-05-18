@@ -18,7 +18,7 @@ const test = async function () {
         https.globalAgent = new https.Agent({ ca: ca });
 
         const certResponse = await fetch(
-            `https://localhost:${certServicePort}/certificates?dnsname=my-test-server.com&version=2`, {
+            `https://localhost:${certServicePort}/certificates?domain=my-test-server.com&version=2`, {
                 agent: https.globalAgent
             });
 
@@ -71,3 +71,4 @@ const test = async function () {
 test().then();
 
 // End
+
