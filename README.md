@@ -249,6 +249,17 @@ finally {
 There is a [test for the cert server](test-server.js) in this
 repository which does basically this.
 
+### Configuring the test server
+
+When creating the `simple-test-service` you can supply configuration options:
+
+
+* `certServerPort` - the port the mock certificate server will run on
+* `certificateObjectKeyName` - the key name for the PKCS12 encoded certificate in the certificate JSON
+* `privateKeyPasswordObjectKeyName` - the key name for password of the PKCS12 private key in the certificate JSON
+* `certificateAuthorityObjectKeyName` - the key name for the certificate authority that generated the certificate in the certificate JSON
+
+
 ### Notes and Issues with the Cert Server
 
 It actually uses a fake DNS server to do the resolution of the cert,

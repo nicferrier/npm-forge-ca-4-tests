@@ -9,7 +9,12 @@ const dns = require('dns');
 const dns2 = require("dns2");
 
 const service = async function (options= {}) {
-    const {certServerPort=8443} = options;
+    const {
+        certServerPort=8443,
+        certificateObjectKeyName="pkcs12",
+        privateKeyPasswordObjectKeyName="pkcs12password",
+        certificateAuthorityObjectKeyName="ca"
+    } = options;
     // Make a dns server
     const dnsServer = dns2.createServer((request, send) =>{
         const query = request.questions[0].name;
@@ -80,9 +85,9 @@ const service = async function (options= {}) {
             if (req.query.version === "2") {
                 const {pkcs12, pkcs12password} = getPkcs12(myPrivateKeyInPem);
                 return res.json({
-                    pkcs12,
-                    pkcs12password,
-                    ca
+                    [certificateObjectKeyName]: pkcs12,
+                    [privateKeyPasswordObjectKeyName]: pkcs12password,
+                    [certificateAuthorityObjectKeyName]: ca
                 });
             }
 
