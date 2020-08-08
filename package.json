@@ -18,6 +18,7 @@
     "@types/node": "^13.7.0",
     "dns2": "^1.4.1",
     "incremental-typescript": "^3.3.1-1",
+    "minimist": "^1.2.5",
     "node-fetch": "^2.6.0",
     "node-forge": "^0.8.3",
     "typescript": "^3.7.5"
