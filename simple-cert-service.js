@@ -27,9 +27,9 @@ const service = async function (options= {}) {
         });
         send(response);
     })
-    dnsServer.listen(0);
+    const dnslistener = await dnsServer.listen(0);
     await new Promise((resolve, reject) => setTimeout(resolve, 2000));
-    const dnsServerPort = dnsServer.socket.address().port;
+    const dnsServerPort = dnsServer.address().port;
 
     const resolver = new dns.Resolver();
     resolver.setServers([`127.0.0.1:${dnsServerPort}`]);

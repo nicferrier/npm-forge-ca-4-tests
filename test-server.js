@@ -64,7 +64,7 @@ const test = async function () {
     }
     finally {
         certServiceListener.close();
-        dnsServer.socket.close();
+        dnsServer.close();
     }
 };
 

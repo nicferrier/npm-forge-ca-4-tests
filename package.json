@@ -1,6 +1,6 @@
 {
   "name": "@nicferrier/forge-test-ca",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "A ca maker, particlarly for testing.",
   "main": "main.js",
   "scripts": {
@@ -16,7 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/node": "^13.7.0",
-    "dns2": "^1.3.0",
+    "dns2": "^1.4.1",
     "incremental-typescript": "^3.3.1-1",
     "node-fetch": "^2.6.0",
     "node-forge": "^0.8.3",
