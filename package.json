@@ -23,8 +23,8 @@
     "typescript": "^3.7.5"
   },
   "devDependencies": {
-    "@swc/cli": "^0.1.22",
-    "@swc/core": "^1.1.20",
+    "@swc/cli": "^0.1.26",
+    "@swc/core": "^1.2.14",
     "express": "^4.17.1"
   }
 }
