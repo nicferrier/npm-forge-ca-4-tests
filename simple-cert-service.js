@@ -49,7 +49,8 @@ const service = async function (options= {}) {
 
     const app = express();
     app.get("/certificates", async function (req, res) {
-        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const requestIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const ip = requestIp === "::1" ? "127.0.0.1" : requestIp;
 
         // Get the dnsName for the cert from the request
         const dnsName = req.query["domain"];
