@@ -2,6 +2,7 @@ const pki = require("node-forge").pki;
 const pkcs12 = require("node-forge").pkcs12;
 const asn1 = require("node-forge").asn1;
 const util = require("node-forge").util;
+const md = require("node-forge").md;
 
 const makeCa = function () {
     const serialNumber = (function () {
@@ -88,7 +89,8 @@ const makeCa = function () {
             ]);
             
             cert.setExtensions(extensions);
-            cert.sign(caKeyPair.privateKey);
+            const hash = md.sha256.create();
+            cert.sign(caKeyPair.privateKey, hash);
 
             const certInPem = pki.certificateToPem(cert);
             const certChain = pki.certificateToPem(caCert) + certInPem;
