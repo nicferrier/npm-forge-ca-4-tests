@@ -17,15 +17,12 @@
   "dependencies": {
     "@types/node": "^13.7.0",
     "dns2": "^1.4.1",
-    "incremental-typescript": "^3.3.1-1",
     "minimist": "^1.2.5",
     "node-fetch": "^2.6.0",
-    "node-forge": "^0.8.3",
+    "node-forge": "^1.3.1",
     "typescript": "^3.7.5"
   },
   "devDependencies": {
-    "@swc/cli": "^0.1.26",
-    "@swc/core": "^1.2.14",
     "express": "^4.17.1"
   }
 }
