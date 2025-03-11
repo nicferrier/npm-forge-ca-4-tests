@@ -4,9 +4,33 @@ const asn1 = require("node-forge").asn1;
 const util = require("node-forge").util;
 const md = require("node-forge").md;
 
-const makeCa = function () {
+
+// options that we use to make a ca:
+//
+// serialNumber       -- the starting serial number
+//                    
+// commonName         -- the common name to be used
+//                    
+// countryName        -- eg: GB
+//                    
+// localityName       -- eg: GB
+//
+// organizatiuonName  -- eg: ""
+//
+// OU                 -- eg: "test"
+//
+// options that we use to rebuild a ca from outside data:
+//
+// certificate        -- the CA cert read in from a pem like:
+//
+//    pki.certificateFromPem(caCertText, false, true)
+//
+// privateKey         -- the private key of the CA read in from PEM
+//
+// publicKey          -- the public key of the CA read in from  PEM
+const makeCa = function (options) {
+    let serial = options?.serialNumber??1;
     const serialNumber = (function () {
-        let serial = 1;
         return function() {
             serial = serial + 1;
             const serialString = "" + serial;
@@ -14,53 +38,97 @@ const makeCa = function () {
         }
     })();
 
-    const caKeyPair = pki.rsa.generateKeyPair(2048);
-    const caCert = pki.createCertificate();
-    caCert.publicKey = caKeyPair.publicKey;
-    caCert.serialNumber = serialNumber();
-    caCert.validity.notBefore = new Date();
-    caCert.validity.notAfter = new Date();
-    caCert.validity.notAfter.setFullYear(
-        caCert.validity.notBefore.getFullYear() + 1
-    );
-
-    const caAttrs = [
-        {name: "commonName", value: "example-ca.org"},
-        {name: "countryName", value: "GB"},
-        {name: "localityName", value: "GB"},
-        {name: "organizationName", value: "Example CA"},
-        {shortName: "OU", value: "test"}
-    ];
-
-    caCert.setSubject(caAttrs);
-    caCert.setIssuer(caAttrs);
-    caCert.setExtensions([
-        { name: "basicConstraints", cA: true },
-        { name: "keyUsage",
-          keyCertSign: true,
-          digitalSignature: true,
-          keyEncipherment: true,
-          dataEncipherment: true },
-        { name: "extKeyUsage",
-          serverAuth: true, clientAuth: true,
-          codeSigning: true, emailProtection: true,
-          timeStamping: true },
-        { name: "nsCertType",
-          client: true, server: true, email: true, objsign: true,
-          sslCA: true, emailCA: true, objCA: true },
-        { name: "subjectAltName",
-          altNames: [
-              { type: 6, value: "http://www.example-ca.org" },
-              { type: 7, ip: "127.0.0.1" }
-          ]},
-        { name: "subjectKeyIdentifier" }
-    ]);
-
-    caCert.sign(caKeyPair.privateKey);
-    const caStore = pki.createCaStore([pki.certificateToPem(caCert)]);
+    const {
+        caStore,
+        caAttrs,
+        certificate: caCert,
+        privateKey: caPrivateKey,
+        publicKey: caPublicKey
+    } = options?.certificate
+          ? (function () {
+              const caAttrs = [
+                  {name: "commonName", value: options?.commonName??"example-ca.org"},
+                  {name: "countryName", value: options?.countryName??"GB"},
+                  {name: "localityName", value: options?.localityName??"GB"},
+                  {name: "organizationName", value: options?.organizationName??""},
+                  {shortName: "OU", value: options?.OU??"test"}
+              ];
+              const decorated = Object.assign(options, {caAttrs});
+              return decorated;
+          })()
+          : (function () {
+              const caKeyPair = pki.rsa.generateKeyPair(2048);
+              const caPublicKey = caKeyPair.publicKey;
+              const caPrivateKey = caKeyPair.privateKey;
+              const cert = pki.createCertificate();
+              cert.publicKey = caPublicKey;
+              cert.serialNumber = serialNumber();
+              cert.validity.notBefore = new Date();
+              cert.validity.notAfter = new Date();
+              cert.validity.notAfter.setFullYear(
+                  cert.validity.notBefore.getFullYear() + 1
+              );
+              
+              const caAttrs = [
+                  {name: "commonName", value: options?.commonName??"example-ca.org"},
+                  {name: "countryName", value: options?.countryName??"GB"},
+                  {name: "localityName", value: options?.localityName??"GB"},
+                  {name: "organizationName", value: options?.organizationName??""},
+                  {shortName: "OU", value: options?.OU??"test"}
+              ];
+              
+              cert.setSubject(caAttrs);
+              cert.setIssuer(caAttrs);
+              cert.setExtensions([
+                  { name: "basicConstraints", cA: true },
+                  { name: "keyUsage",
+                    keyCertSign: true,
+                    digitalSignature: true,
+                    keyEncipherment: true,
+                    dataEncipherment: true },
+                  { name: "extKeyUsage",
+                    serverAuth: true,
+                    clientAuth: true,
+                    codeSigning: true,
+                    emailProtection: true,
+                    timeStamping: true },
+                  { name: "nsCertType",
+                    client: true,
+                    server: true,
+                    email: true,
+                    objsign: true,
+                    sslCA: true,
+                    emailCA: true,
+                    objCA: true },
+                  { name: "subjectAltName",
+                    altNames: [
+                        { type: 6, value: options?.commonName
+                          ? `http://www.${options?.commonName}`
+                          : "http://www.example-ca.org" },
+                        { type: 7, ip: "127.0.0.1" }
+                    ]},
+                  { name: "subjectKeyIdentifier" }
+              ]);
+              cert.sign(caPrivateKey);
+              const store = pki.createCaStore([pki.certificateToPem(cert)]);
+              return {
+                  store,
+                  certificate: cert,
+                  privateKey: caPrivateKey,
+                  publicKey: caPublicKey,
+                  caAttrs
+              };
+          })();
 
     return {
-        issue: function (publicKeyInPem, csrInPem) {
+        caCert,
+        caPrivateKey,
+        caPublicKey,
+        getSerialNumber() {
+            return serial;
+        },
+        issue(publicKeyInPem, csrInPem) {
+            console.log("issue ca attrs:", caAttrs);
             const publicKey = pki.publicKeyFromPem(publicKeyInPem);
             const csrToSign = pki.certificationRequestFromPem(csrInPem);
             const cert = pki.createCertificate();
@@ -75,11 +143,12 @@ const makeCa = function () {
             cert.setSubject(csrToSign.subject.attributes);
             
             // To CA sign the cert the CA simply does this:
+            console.log("about to set caAttrs:", caAttrs);
             cert.setIssuer(caAttrs);
             
             const extensions = csrToSign.getAttribute({name: "extensionRequest"}).extensions;
             extensions.push.apply(extensions, [
-                { name: "basicConstraints", cA: true },
+                { name: "basicConstraints", cA: false },
                 { name: "keyUsage",
                   keyCertSign: true,
                   digitalSignature: true,
@@ -90,7 +159,7 @@ const makeCa = function () {
             
             cert.setExtensions(extensions);
             const hash = md.sha256.create();
-            cert.sign(caKeyPair.privateKey, hash);
+            cert.sign(caPrivateKey, hash);
 
             const certInPem = pki.certificateToPem(cert);
             const certChain = pki.certificateToPem(caCert) + certInPem;
