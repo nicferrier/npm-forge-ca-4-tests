@@ -17,15 +17,23 @@ Like this:
 npm i @nicferrier/forge-test-ca
 ```
 
-You'll need at least node v10 I think.
+You'll need at least node `v10` I think, but to be honest I only test on
+the latest nodes. Currently, at time of writing that's `v22`.
 
-There is no binary or anything here, it's only useful as a development
-(in fact, just a testing) library.
+## Why would I use this?
+
+This is a useful development/testing library but there is also a real
+ca server that will hand out certificates on HTTP requests.
+
+This is not an ACME server but it is still useful for situations where
+you don't want application code to have mixed https/http
+situations. In development call this server for a certifacte. In
+production do whatever you have to do.
 
 
 ## Make a CA
 
-That's easy
+That's easy:
 
 ```javascript
 const caMaker = require("@nicferrier/forge-test-ca");
@@ -284,9 +292,99 @@ could. But the management of certs is very dependent on how an
 organisation works. So this is left as an exercise for the reader.
 
 
+## How about that real CA server?
+
+The _real_ CA server is a server that will make a CA and persist state
+and continuously hand out certs.
+
+It can be stopped and restarted and it will just continue where it
+left off.
+
+So it's very like a CA server implementation might look but it's a lot
+simpler.
+
+You can initialze the server like this:
+
+```
+$ nicferrier-real-ca init-ca
+```
+
+This will make a `realca` directory in the current directory. That
+directory will contain the state of the CA.
+
+You can then start the server like this:
+
+```
+$ nicferrier-real-ca start-ca
+```
+
+That will fail if it can't find the `realca` directory in the current
+directory.
+
+The server starts an HTTP server on port `10080` which can be used to
+fetch the root certificate.
+
+It also starts an HTTPS server on port `10443` which is identified by
+a cert from the same root certificate chain. This server has an
+endpoint that can create another certificate and so can be used by
+application code.
+
+So you can then fetch a CA with this code:
+
+```javacript
+import fetch from "node-fetch";
+import 
+import url from "node:url";
+
+// The URL we want a certificate for
+const hostingUrl = new url.URL("https://localhost:8000");
+// Let's try and get the cert from remote cert server
+const caUrl = "http://localhost:10080";
+console.log(`fetching certificate from ${caUrl}...`);
+const [caCertFetchErr, caCertFetchRes] = await fetch(caUrl).then(r=>[,r]).catch(e=>[e]);
+if (caCertFetchErr || caCertFetchRes.status !== 200) {
+    console.log("Aborting because cannot fetch the CA cert:",
+                caCertFetchErr??`http: ${caCertFetchRes.status}`);
+    process.exit(1);  // we could c(error) instead
+}
+
+const caCertPemData = await caCertFetchRes.text();
+const agent = new https.Agent({ca: caCertPemData });
+
+// Now get the actual cert we'll start this webserver with
+const [certFetchErr, certFetchRes] = await fetch("https://localhost:10443", {
+    method: "POST",
+    agent
+}).then(r=>[,r]).catch(e=>[e]);
+if (certFetchErr || certFetchRes.status !== 201) {
+    console.log("Aborting because can't make certificate:",
+                certFetchErr??`http: ${certFetchRes.status}`);
+    process.exit(1);  // we could c(error) instead
+}
+const certJson = await certFetchRes.json();
+const {privateKeyInPem, cert} = certJson;
+
+console.log("received certificate");
+
+// Start my app server with the certificate
+const tlsOpts = {
+    key: privateKeyInPem,
+    cert
+};
+
+const myAppServerListener = new Promise((t,c) => {
+    const listener = https.createServer(tlsOpts, (request, response) => {
+        res.writeHead(200);                            
+        res.end('hello world\n');
+    }).listen(hostingUrl.port, _ => t(listener));
+});
+```
+
 ## Thanks node-forge!
 
 This project wouldn't have been possible without
 [node-forge](https://www.npmjs.com/package/node-forge), which is a
 totally awesome set of crypto and pki algorithms implementations.
 
+
+_fin_

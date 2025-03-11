@@ -6,6 +6,9 @@
   "scripts": {
     "test": "node test-ca.js"
   },
+  "bin": {
+    "nicferrier-real-ca": "./real-ca-server.mjs"
+  },
   "keywords": [
     "ca",
     "tls"
