@@ -34,6 +34,8 @@ See the README for more information.
     process.exit(0);
 }
 
+const cwd = process.cwd();
+
 // You can init a real ca like this
 if (process.argv[2] === "init-ca") {
     if (process.argv[3] === undefined
@@ -44,11 +46,12 @@ if (process.argv[2] === "init-ca") {
     const commonName = process.argv[3];
 
     // Now setup the CA
-    const realcaDir = path.join(__dirname, "realca");
-    const [dirErr] = await fs.promises.mkdir(realcaDir).then(r=>[]).catch(e=>[e]);
+    const realcaDir = path.join(cwd, "realca");
 
+    const [dirErr] = await fs.promises.mkdir(realcaDir).then(r=>[]).catch(e=>[e]);
     if (dirErr && dirErr.code !== "EEXIST") {
-        console.log("dir err:", dirErr);
+        console.log("Error: could not create 'realca' dir because:", dirErr);
+        process.exit(1);
     }
 
     const [caDomainWriteErr] = await fs.promises.writeFile(
@@ -102,7 +105,7 @@ if (process.argv[2] === "init-ca") {
 }
 
 if (process.argv[2] === "start-ca") {
-    const realcaDir = path.join(__dirname, "realca");
+    const realcaDir = path.join(cwd, "realca");
     const [caPrivateKeyErr, caPrivateKeyText] = await fs.promises.readFile(
         path.join(realcaDir, "caprivatekey.pem"),
         "ascii"
@@ -225,3 +228,8 @@ if (process.argv[2] === "start-ca") {
 }
 
 // End
+
+/* Local Variables:  */
+/* mode: js           */
+/* js-indent-level: 4 */
+/* End:              */
