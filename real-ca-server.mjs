@@ -189,7 +189,10 @@ if (process.argv[2] === "start-ca") {
     // this should be a keepie or something
     const caCertServer = http.createServer();
     caCertServer.on("request", (i,o) => {
-        o.writeHead(200, { "content-type": "text/plain" });
+        o.writeHead(200, {
+            "content-type": "text/plain",
+            "location": "https://localhost:10443"
+        });
         o.end(caCertText);
     });
     const caCertServerListener = caCertServer.listen(10080);

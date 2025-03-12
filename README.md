@@ -348,10 +348,13 @@ if (caCertFetchErr || caCertFetchRes.status !== 200) {
 }
 
 const caCertPemData = await caCertFetchRes.text();
+const tlsEndpointLocation = caCertFetchRes.headers.get("location");
+console.log("tls cert fetch endpoint location:", tlsEndpointLocation);
+
 const agent = new https.Agent({ca: caCertPemData });
 
 // Now get the actual cert we'll start this webserver with
-const [certFetchErr, certFetchRes] = await fetch("https://localhost:10443", {
+const [certFetchErr, certFetchRes] = await fetch(tlsEndpointLocation, {
     method: "POST",
     agent
 }).then(r=>[,r]).catch(e=>[e]);
