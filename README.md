@@ -331,7 +331,7 @@ application code.
 
 So you can then fetch a CA with this code:
 
-```javacript
+```javascript
 import fetch from "node-fetch";
 import 
 import url from "node:url";
