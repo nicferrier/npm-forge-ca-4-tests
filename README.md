@@ -333,7 +333,6 @@ So you can then fetch a CA with this code:
 
 ```javascript
 import fetch from "node-fetch";
-import 
 import url from "node:url";
 
 // The URL we want a certificate for
