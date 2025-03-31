@@ -8,6 +8,7 @@ import path from "node:path";
 import url from "node:url";
 import forge from "node-forge";
 import caMaker from "./cacerts.js";
+import fetch from "node-fetch";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -104,7 +105,17 @@ if (process.argv[2] === "init-ca") {
     process.exit(0);
 }
 
-if (process.argv[2] === "start-ca") {
+
+// This function starts the CA server -- it is advisable to keep only
+// one of these going at once because it owns the serial number of
+// the certs
+//
+// caCertServerPort is the port number that will be used for the HTTP
+// server that can hand out the base CA cert
+//
+// caServerPort is the port number that will be used for the HTTPS
+// port of the CA server; the server you can request a cert from
+async function startCa(caCertServerPort=10080, caServerPort=10443) {
     const realcaDir = path.join(cwd, "realca");
     const [caPrivateKeyErr, caPrivateKeyText] = await fs.promises.readFile(
         path.join(realcaDir, "caprivatekey.pem"),
@@ -195,7 +206,7 @@ if (process.argv[2] === "start-ca") {
         });
         o.end(caCertText);
     });
-    const caCertServerListener = caCertServer.listen(10080);
+    const caCertServerListener = caCertServer.listen(caCertServerPort);
 
 
     const tlsOpts = {
@@ -221,14 +232,131 @@ if (process.argv[2] === "start-ca") {
         o.end(JSON.stringify({privateKeyInPem, cert}));
     });
     const listener = await new Promise((t,c) => {
-        const l = server.listen(10443, _ => t(l));
+        const l = server.listen(caServerPort, _ => t(l));
     });
 
-    await new Promise((t,c)=>{
-        console.log("ca cert server listening on:", caCertServerListener.address().port);
-        console.log("server listening on:", listener.address().port);
-    });
+    console.log("ca cert server listening on:", caCertServerListener.address().port);
+    console.log("server listening on:", listener.address().port);
+
+    // Write the ca server port to a file
+    await fs.promises.writeFile(
+        path.join(realcaDir, "ca-server-port"),
+        "" + caServerPort,
+        "utf8"
+    );
+
+    return;
 }
+
+// Start a standalone CA server off the CA directory
+//
+// The idea here is that servers can fetch a new cert from here just
+// by hitting it's endpoint.
+//
+// There is also an endpoint to fetch the CA cert for this server (the
+// real-ca ca-cert) which means a server can use that ca-cert to talk
+// to the ca-cert certificated endpoint for handing out certs from
+// this CA.
+if (process.argv[2] === "start-ca") {
+    // start the server with ports from argv[3,4] ??
+    const [httpPort, httpsPort] = (function () {
+        return Object.values(arguments).map(arg => {
+            const v = parseInt(arg);
+            if (isNaN(v)) return undefined;
+            return v;
+        });
+    })(process.argv[3], process.argv[4]);
+    await startCa(httpPort, httpsPort);
+}
+
+
+if (process.argv[2] === "make-cert") {
+    const realcaDir = process.env.REALCADIR??path.join(cwd, "realca");
+    const [caDomainErr, caDomain] = await fs.promises.readFile(
+        path.join(realcaDir, "cadomain.txt"), "utf8"
+    ).then(r=>[,r]).catch(e=>[e]);
+    if (caDomainErr) {
+        console.log("Error: cannot read ca domain file:", caDomainErr);
+        process.exit(1);
+    }
+    console.log("ca domain:", caDomain);
+
+    const [caCertErr, caCertText] = await fs.promises.readFile(
+        path.join(realcaDir, "cacert.pem"),
+        "ascii"
+    ).then(r=>[,r]).catch(e=>[e]);
+    if (caCertErr) {
+        console.log("Error: cannot read certificate:", caPublicKeyErr);
+        process.exit(1);
+    }
+
+    // Get the current server port
+    const [readPortErr, caServerPortStr] = await fs.promises.readFile(
+        path.join(realcaDir, "ca-server-port"), "utf8"
+    ).then(r=>[,r]).catch(e=>[e]);
+    if (readPortErr) {
+        console.log("could not find the server port:", readPortErr);
+        process.exit(1);
+    }
+
+    const portNum = (function (a){
+        const v = parseInt(a);
+        if (isNaN(v)) return undefined;
+        return v;
+    })(caServerPortStr);
+
+    if (portNum === undefined) {
+        console.log("server port not an integer:", caServerPortStr);
+    }
+
+
+    const agent = new https.Agent({ca: caCertText});
+    const [acquireErr, certRes] = await fetch(`https://localhost:${portNum}`, {
+        agent,
+        method: "POST"
+    }).then(r=>[,r]).catch(e=>[e]);
+    if (acquireErr  || certRes.status > 399) {
+        console.log("failed to get a cert:", acquireErr??`https status: ${certRes.status}`);
+        process.exit(1);
+    }
+    
+
+    const certBodyResponse = await certRes.text();
+    if (certRes.status !== 201) {
+        console.log("failed to get a cert:", certBodyResponse);
+        process.exit(1);
+    }
+
+    if (!certRes.headers.get("content-type").startsWith("application/json")) {
+        console.log("unexpected cert response");
+        process.exit(1);
+    }
+    const certData = JSON.parse(certBodyResponse);
+    const {privateKeyInPem, cert} = certData;
+
+    if (process.argv[3] === undefined) {
+        console.log(`Private key:
+${privateKeyInPem}
+
+Certificate:
+${cert}
+`);
+        process.exit(0);
+    }
+
+    await fs.promises.writeFile(
+        path.join(process.cwd(), process.argv[3] + "_privatekey.pem"),
+        privateKeyInPem,
+        "utf8"
+    );
+    await fs.promises.writeFile(
+        path.join(process.cwd(), process.argv[3] + "_cert.pem"),
+        cert,
+        "utf8"
+    );
+    process.exit(0);
+}
+
 
 // End
 
