@@ -382,6 +382,56 @@ const myAppServerListener = new Promise((t,c) => {
 });
 ```
 
+### Making a cert from the command line with the real-ca
+
+You can also use a pre-canned cert acquirer from the command-line.
+
+First, start the ca, perhaps on a different port than the default:
+
+```
+nicferrier-real-ca start-ca 10081 10444 &
+```
+
+This will write the current port numbers into the `realca` directory.
+
+Then you can call the `make-cert` command:
+
+```
+nicferrier-real-ca make-cert
+```
+
+this will talk to the server and grab a cert and output it to the
+console.
+
+If you want the cert saved into files you can do that by specifying a
+prefix for the filenames:
+
+```
+nicferrier-real-ca make-cert mysite
+```
+
+will save `mysite-privatekey.pem` and `mysite-cert.pem`.
+
+Additionally, `make-cert` needs to know where the `realca` directory
+is. By default it's `./realca` but it can also be specified by using
+the environment variable `REALCADIR`.
+
+For example, consider this initialization of a real CA all the way to
+getting a certificate to be store in the directory of an app:
+
+```
+cd ~/projects
+mkdir realca
+nicferrier-real-ca init-ca mysite.com
+nicferrier-real-ca start-ca 10081 10444 &
+cd ../myapp
+REALCADIR=~/projects/realca nicferrier-real-ca make-cert myapp-dev
+```
+
+this will result in a `myapp-dev-cert.pem` and a
+`myapp-dev-privatekey.pem` file in the `myapp` directory.
+
+
 ## Thanks node-forge!
 
 This project wouldn't have been possible without

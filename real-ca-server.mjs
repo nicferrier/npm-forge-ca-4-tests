@@ -22,13 +22,29 @@ Use:
 
   node server.mjs init-ca <ca-domain>
          -- sets up a real CA in the directory ./realca for <ca-domain>
-  node server.mjs start-ca
+
+  node server.mjs start-ca [ <ca-cert port> <ca-server port> ]
          -- start up the real CA found in the directory ./realca
 
-The server has 2 open ports:
+  node server.mjs make-cert [ <cert-file-prefix> ]
+         -- talk o the server to obtain a certificate optionally saving it
+
+The server has 2 open ports, by default:
 
   10080 - an HTTP port which returns the CA root certificate
   10443 - root certificated HTTPS which returns a new signed certificate
+
+The 'ca-cert port' is the web port for fetching the base CA cert.
+
+The 'ca-server port' is the port for the HTTPS CA server which will issue certs.
+
+The 'make-cert' command will print the certificate, without a 'prefix'
+but with a 'prefix' will use that to make files in the current
+directory.
+
+Additionally, 'make-cert' needs to know where the 'realca' directory
+is, by default './realca' but it can also be specified with the
+environment variable 'REALCADIR'.
 
 See the README for more information.
 `);
