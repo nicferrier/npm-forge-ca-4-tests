@@ -143,11 +143,25 @@ const makeCa = function (options) {
             cert.setSubject(csrToSign.subject.attributes);
             
             // To CA sign the cert the CA simply does this:
-            console.log("about to set caAttrs:", caAttrs);
+            console.log("about to set caAttrs: %o", caAttrs);
             cert.setIssuer(caAttrs);
             
             const extensions = csrToSign.getAttribute({name: "extensionRequest"}).extensions;
-            extensions.push.apply(extensions, [
+            console.log("about to set extensions: %o", extensions);
+
+            // hmmm... it appears this stuff is mangled... a bug in node-forge?
+            const [{altNames}] = extensions;
+            const safeExtensions = [{
+                name: "subjectAltName",
+                altNames: altNames.map(altn => {
+                    if (altn.type === 7) {
+                        return { type: 7, ip: altn.ip };
+                    }
+                    return { type: 2, value: altn.value };
+                })
+            }];
+            console.log("safe extensions: %o", safeExtensions);
+            extensions.push.apply(safeExtensions, [
                 { name: "basicConstraints", cA: false },
                 { name: "keyUsage",
                   keyCertSign: true,
@@ -223,20 +237,20 @@ const makeCsr = function (csrOptions = {}, altNames = []) {
 
     const altNameList = altNames.concat([csrOpts.commonName]).map(name => {
         if (ipv4Regex.test(name)) {
-            return [{
+            return {
                 type: 7, ip: name
-            }];
+            };
         }
-        return [{
-            type: 6, value: name
-        }];
-    })[0];
+        return {
+            type: 2, value: name
+        };
+    });
 
     // DEBUG 
-    // console.log("make csr altNameList:", altNameList);
+    console.log("make csr altNameList:", altNameList);
     
     csr.setAttributes([
-        { name: "unstructuredName", value: "My Example Cert" },
+        //{ name: "unstructuredName", value: "My Example Cert" },
         { name: "extensionRequest",
           extensions: [{
               name: "subjectAltName",

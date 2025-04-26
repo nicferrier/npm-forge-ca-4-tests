@@ -9,6 +9,7 @@ import url from "node:url";
 import forge from "node-forge";
 import caMaker from "./cacerts.js";
 import fetch from "node-fetch";
+import querystring from "node:querystring";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -244,9 +245,13 @@ async function startCa(caCertServerPort=10080, caServerPort=10443) {
             i.on("data", chunk => data = data + chunk.toString("utf8"));
             i.on("end", _ => t(data));
         }).then(async postData => {
-            const postParams = Object.fromEntries((new url.URLSearchParams(postData)).entries());
+            const postParams = querystring.parse(postData);
             const {altName} = postParams;
-            const altNames = altName ? [altName] : [];
+            const altNames = altName?.constructor === Array
+                  ? altName
+                  : (typeof altName === 'string' || altName instanceof String)
+                  ? [altName]
+                  : [];
             const [certCreateErr, certRes] = await makeCertFromCa(altNames)
                   .then(r=>[,r]).catch(e=>[e]);
             if (certCreateErr) {

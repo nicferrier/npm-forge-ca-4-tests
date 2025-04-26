@@ -163,7 +163,7 @@ const [certFetchErr, certFetchRes] = await fetch(tlsEndpointLocation, {
 }).then(r=>[,r]).catch(e=>[e]);
 ```
 
-These are set appropriately as a type 7 alt-name for a non-ip address
-and a type 6 for an ip-address.
+These are set appropriately as a type 6 alt-name for a non-ip address
+and a type 7 for an ip-address.
 
 _fin_
