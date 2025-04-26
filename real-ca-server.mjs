@@ -197,8 +197,9 @@ async function startCa(caCertServerPort=10080, caServerPort=10443) {
 
     // A function to make a cert .... used to initialize THIS server
     // as well as BY that https server to make the requested certs
-    const makeCertFromCa = async function () {
-        const [privateKeyInPem, publicKeyInPem, csrInPem] = caMaker.makeCsr();
+    const makeCertFromCa = async function (altNames=[]) {
+        console.log("make cert from ca - altNames:", altNames);
+        const [privateKeyInPem, publicKeyInPem, csrInPem] = caMaker.makeCsr({}, altNames);
         const {cert, ca} = issue(publicKeyInPem, csrInPem);
         const updatedSerial = getSerialNumber();
         await fs.promises.writeFile(
@@ -236,16 +237,32 @@ async function startCa(caCertServerPort=10080, caServerPort=10443) {
             o.writeHead(200);
             return o.end("try a POST to create a certificate");
         }
+
         // If it gets here it must be a POST
-        const [certCreateErr, certRes] = await makeCertFromCa().then(r=>[,r]).catch(e=>[e]);
-        if (certCreateErr) {
-            console.log("error creating a certificate:", certCreateErr);
-            o.writeHead(400);
-            return o.end("some error occurred making your certificate");
-        }
-        const {privateKeyInPem, cert} = certRes;
-        o.writeHead(201, {"content-type": "application/json"});
-        o.end(JSON.stringify({privateKeyInPem, cert}));
+        new Promise((t,c) => {
+            let data = "";
+            i.on("data", chunk => data = data + chunk.toString("utf8"));
+            i.on("end", _ => t(data));
+        }).then(async postData => {
+            const postParams = Object.fromEntries((new url.URLSearchParams(postData)).entries());
+            const {altName} = postParams;
+            const altNames = altName ? [altName] : [];
+            const [certCreateErr, certRes] = await makeCertFromCa(altNames)
+                  .then(r=>[,r]).catch(e=>[e]);
+            if (certCreateErr) {
+                console.log("error creating a certificate:", certCreateErr);
+                o.writeHead(400);
+                return o.end("some error occurred making your certificate");
+            }
+            const {privateKeyInPem, cert} = certRes;
+            o.writeHead(201, {"content-type": "application/json"});
+            o.end(JSON.stringify({privateKeyInPem, cert}));
+        }).catch(e => {
+            console.log("ca cert server error handling request:", e);
+            o.writeHead(400, {'content-type': "text/html"});
+            o.end("<h1>error handling certificate</h1>");
+        })
+
     });
     const listener = await new Promise((t,c) => {
         const l = server.listen(caServerPort, _ => t(l));

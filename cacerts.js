@@ -200,8 +200,12 @@ const csrDefaultOptions = {
     OU: "Example"
 };
 
+// For detecting if the altname is an IP address
+const ipv4Regex = new RegExp("^([0-9]+\\.){3}[0-9]+");
+
 // altNames should just be a list of names
 const makeCsr = function (csrOptions = {}, altNames = []) {
+    console.log("make csr altNames:", altNames);
     const csrOpts = Object.assign(csrDefaultOptions, csrOptions);
     const subjectDetails = Object.keys(csrOpts).map(key => {
         if (key == "OU") {
@@ -217,9 +221,20 @@ const makeCsr = function (csrOptions = {}, altNames = []) {
     // console.log("csr subject details", subjectDetails);
     csr.setSubject(subjectDetails);
 
-    const altNameList = altNames.concat([csrOpts.commonName]).map(name => [{
-        type: 2, value: name
-    }][0]);
+    const altNameList = altNames.concat([csrOpts.commonName]).map(name => {
+        if (ipv4Regex.test(name)) {
+            return [{
+                type: 7, ip: name
+            }];
+        }
+        return [{
+            type: 6, value: name
+        }];
+    })[0];
+
+    // DEBUG 
+    // console.log("make csr altNameList:", altNameList);
+    
     csr.setAttributes([
         { name: "unstructuredName", value: "My Example Cert" },
         { name: "extensionRequest",
